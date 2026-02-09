@@ -254,6 +254,7 @@
                 precipitationChance.textContent = `${weatherData.hourly.precipitation_probability[hourIndex]}%`;
             }
 
+            let weatherTimer = null;
             const initWeather = async () => {
                 if (!localStorage.getItem('latitude') || !localStorage.getItem('longitude')) 
                     return;
@@ -261,17 +262,18 @@
                 const nowFloored = new Date(new Date().setMinutes(0, 0, 0));
                 if (!localStorage.getItem('forecastUntil') || !localStorage.getItem('forecastData') ||
                     nowFloored > new Date(localStorage.getItem('forecastUntil'))
-                )
+                ) {
                     // renders previous forecast last value if expired to prevent placeholder brief flash
                     if (localStorage.getItem('forecastData')) renderWeatherData();
-
                     await fetchWeatherData();
+                }
                 
                 renderWeatherData();
 
                 const now = new Date();
                 const msUntilNextHour = (60 - now.getMinutes()) * 60000 - now.getSeconds() * 1000 - now.getMilliseconds() + 50; // slight buffer
-                setTimeout(initWeather, msUntilNextHour);
+                if (weatherTimer) clearTimeout(weatherTimer);
+                weatherTimer = setTimeout(initWeather, msUntilNextHour);
             };
 
             const setWeatherButton = document.getElementById("widget-list");
