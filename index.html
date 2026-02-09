@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <title>New Tab</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Ctext%20x='0'%20y='28'%20font-size='32'%3E💎%3C/text%3E%3C/svg%3E">
 
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Ctext%20x='0'%20y='28'%20font-size='32'%3E💎%3C/text%3E%3C/svg%3E">
     <link rel="preload" as="image" href="/background.jpg" type="image/jpeg">
 
     <style>
@@ -122,14 +122,28 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            position: relative;
             height: 100%;
             aspect-ratio: 1/1;
             align-self: flex-start;
             flex-shrink: 0;
         }
-        #search-icon {
+        .search-icon {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
             width: 28px;
             height: 28px;
+            transition: all 0.2s ease-out;
+        }
+        .fade-out-down {
+            opacity: 0;
+            transform: translate(-50%, calc(-50% + 28px));
+        }
+        .fade-out-up {
+            opacity: 0;
+            transform: translate(-50%, calc(-50% - 28px));
         }
 
         #search-input {
@@ -169,6 +183,7 @@
             // clock
             const hour = document.getElementById("hour");
             const minute = document.getElementById("minute");
+
             const renderTime = () => {
                 const now = new Date()
                 hour.textContent = String(now.getHours()).padStart(2, '0');
@@ -276,8 +291,8 @@
                 weatherTimer = setTimeout(initWeather, msUntilNextHour);
             };
 
-            const setWeatherButton = document.getElementById("widget-list");
-            setWeatherButton.addEventListener("click", () => {
+            const configureWeatherBtn = document.getElementById("widget-list");
+            const configureWeatherLocation = () => {
                 const input = prompt("Enter your location's latitude and longitude separated by comma. \n(latitude, longitude): ")
                 if (!input) return;
 
@@ -291,9 +306,94 @@
                 localStorage.setItem("longitude", longitude.toString());
 
                 initWeather();
+            };
+
+            configureWeatherBtn.addEventListener("click", configureWeatherLocation);
+            initWeather();
+
+
+            // search
+            const googleQueryUrl = (input) => `https://www.google.com/search?q=${encodeURIComponent(input.trim())}`;
+
+            const commands = [
+                {
+                    id: 'youtube',
+                    match: (input) => input.startsWith('yt '),
+                    link: (input) => `https://www.youtube.com/results?search_query=${encodeURIComponent(input.slice(3).trim())}`,
+                },
+                {
+                    id: 'github',
+                    match: (input) => input.startsWith('gh '),
+                    link: (input) => `https://www.github.com/${input.slice(3).trim()}`,
+                },
+                {
+                    id: 'chatgpt',
+                    match: (input) => input.startsWith('gpt '),
+                    link: (input) => `https://chatgpt.com/?q=${encodeURIComponent(input.slice(4).trim())}`,
+                },
+                {
+                    id: 'claude',
+                    match: (input) => input.startsWith('claude '),
+                    link: (input) => `https://claude.ai/new?q=${encodeURIComponent(input.slice(7).trim())}`,
+                },
+                {
+                    id: 'localhost',
+                    match: (input) => input.trim().startsWith(':') && !input.trim().includes(' '),
+                    link: (input) => `http://localhost:${input.slice(1).trim()}`,
+                },
+                {
+                    id: 'link',
+                    match: (input) => {
+                        const s = input.trim();
+                        return (
+                            /^https?:\/\//.test(s) ||
+                            /^localhost(?:[^\s]*)?$/.test(s) || 
+                            /^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(s) ||
+                            /^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+\.?$/.test(s)
+                        );
+                    },
+
+                    link: (input) => {
+                        const s = input.trim();
+                        if (/^https?:\/\//.test(s)) return s;                       
+                        if (/^localhost(?:[^\s]*)?$/.test(s)) return `http://${s}`;     
+                        if (/^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(s)) return `http://${s}`; 
+                        return `https://${s}`;                                             
+                    }
+                }
+            ]
+            
+            const inputField = document.getElementById('search-input');
+            inputField.addEventListener('input', () => {
+                const defaultSearchIcon = document.getElementById('search-icon-default');
+                const activeSearchIcon = document.getElementById('search-icon-active');
+
+                const chosenCommand = commands.find(c => c.match(inputField.value));
+                if (chosenCommand) {
+                    const clone = document.getElementById(`icon-${chosenCommand.id}`).content.cloneNode(true);
+                    activeSearchIcon.firstElementChild.replaceWith(clone);
+
+                    defaultSearchIcon.classList.add('fade-out-up');
+                    activeSearchIcon.classList.remove('fade-out-down');
+                }
+                else {
+                    defaultSearchIcon.classList.remove('fade-out-up');
+                    activeSearchIcon.classList.add('fade-out-down');
+                }
             });
 
-            initWeather();
+            const searchBar = document.getElementById('search-bar');
+            searchBar.addEventListener('submit', (e) => {
+                e.preventDefault();
+
+                const chosenCommand = commands.find(c => c.match(inputField.value));
+                if (chosenCommand) {
+                    window.location.href = chosenCommand.link(inputField.value);
+                }
+                else {
+                    window.location.href = googleQueryUrl(inputField.value);
+                }
+            });
         });
     </script>
 </head>
@@ -306,6 +406,14 @@
     <template id="icon-rain"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="16" y1="13" x2="16" y2="21"></line><line x1="8" y1="13" x2="8" y2="21"></line><line x1="12" y1="15" x2="12" y2="23"></line><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"></path></svg></template>
     <template id="icon-thunder"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9"></path><polyline points="13 11 9 17 15 17 11 23"></polyline></svg></template>
     <template id="icon-snow"><svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M8 16a.5.5 0 0 1-.5-.5v-1.293l-.646.647a.5.5 0 0 1-.707-.708L7.5 12.793V8.866l-3.4 1.963-.496 1.85a.5.5 0 1 1-.966-.26l.237-.882-1.12.646a.5.5 0 0 1-.5-.866l1.12-.646-.884-.237a.5.5 0 1 1 .26-.966l1.848.495L7 8 3.6 6.037l-1.85.495a.5.5 0 0 1-.258-.966l.883-.237-1.12-.646a.5.5 0 1 1 .5-.866l1.12.646-.237-.883a.5.5 0 1 1 .966-.258l.495 1.849L7.5 7.134V3.207L6.147 1.854a.5.5 0 1 1 .707-.708l.646.647V.5a.5.5 0 1 1 1 0v1.293l.647-.647a.5.5 0 1 1 .707.708L8.5 3.207v3.927l3.4-1.963.496-1.85a.5.5 0 1 1 .966.26l-.236.882 1.12-.646a.5.5 0 0 1 .5.866l-1.12.646.883.237a.5.5 0 1 1-.26.966l-1.848-.495L9 8l3.4 1.963 1.849-.495a.5.5 0 0 1 .259.966l-.883.237 1.12.646a.5.5 0 0 1-.5.866l-1.12-.646.236.883a.5.5 0 1 1-.966.258l-.495-1.849-3.4-1.963v3.927l1.353 1.353a.5.5 0 0 1-.707.708l-.647-.647V15.5a.5.5 0 0 1-.5.5z"/></svg></template>
+
+    <!-- Command icons templates -->
+    <template id="icon-youtube"><svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M21.7 8.037a4.26 4.26 0 0 0-.789-1.964 2.84 2.84 0 0 0-1.984-.839c-2.767-.2-6.926-.2-6.926-.2s-4.157 0-6.928.2a2.836 2.836 0 0 0-1.983.839 4.225 4.225 0 0 0-.79 1.965 30.146 30.146 0 0 0-.2 3.206v1.5a30.12 30.12 0 0 0 .2 3.206c.094.712.364 1.39.784 1.972.604.536 1.38.837 2.187.848 1.583.151 6.731.2 6.731.2s4.161 0 6.928-.2a2.844 2.844 0 0 0 1.985-.84 4.27 4.27 0 0 0 .787-1.965 30.12 30.12 0 0 0 .2-3.206v-1.516a30.672 30.672 0 0 0-.202-3.206Zm-11.692 6.554v-5.62l5.4 2.819-5.4 2.801Z" clip-rule="evenodd"/></svg></template>
+    <template id="icon-github"><svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"> <path fill-rule="evenodd" d="M12.006 2a9.847 9.847 0 0 0-6.484 2.44 10.32 10.32 0 0 0-3.393 6.17 10.48 10.48 0 0 0 1.317 6.955 10.045 10.045 0 0 0 5.4 4.418c.504.095.683-.223.683-.494 0-.245-.01-1.052-.014-1.908-2.78.62-3.366-1.21-3.366-1.21a2.711 2.711 0 0 0-1.11-1.5c-.907-.637.07-.621.07-.621.317.044.62.163.885.346.266.183.487.426.647.71.135.253.318.476.538.655a2.079 2.079 0 0 0 2.37.196c.045-.52.27-1.006.635-1.37-2.219-.259-4.554-1.138-4.554-5.07a4.022 4.022 0 0 1 1.031-2.75 3.77 3.77 0 0 1 .096-2.713s.839-.275 2.749 1.05a9.26 9.26 0 0 1 5.004 0c1.906-1.325 2.74-1.05 2.74-1.05.37.858.406 1.828.101 2.713a4.017 4.017 0 0 1 1.029 2.75c0 3.939-2.339 4.805-4.564 5.058a2.471 2.471 0 0 1 .679 1.897c0 1.372-.012 2.477-.012 2.814 0 .272.18.592.687.492a10.05 10.05 0 0 0 5.388-4.421 10.473 10.473 0 0 0 1.313-6.948 10.32 10.32 0 0 0-3.39-6.165A9.847 9.847 0 0 0 12.007 2Z" clip-rule="evenodd"/></svg></template>
+    <template id="icon-chatgpt"><svg viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="m297.06 130.97c7.26-21.79 4.76-45.66-6.85-65.48-17.46-30.4-52.56-46.04-86.84-38.68-15.25-17.18-37.16-26.95-60.13-26.81-35.04-.08-66.13 22.48-76.91 55.82-22.51 4.61-41.94 18.7-53.31 38.67-17.59 30.32-13.58 68.54 9.92 94.54-7.26 21.79-4.76 45.66 6.85 65.48 17.46 30.4 52.56 46.04 86.84 38.68 15.24 17.18 37.16 26.95 60.13 26.8 35.06.09 66.16-22.49 76.94-55.86 22.51-4.61 41.94-18.7 53.31-38.67 17.57-30.32 13.55-68.51-9.94-94.51zm-120.28 168.11c-14.03.02-27.62-4.89-38.39-13.88.49-.26 1.34-.73 1.89-1.07l63.72-36.8c3.26-1.85 5.26-5.32 5.24-9.07v-89.83l26.93 15.55c.29.14.48.42.52.74v74.39c-.04 33.08-26.83 59.9-59.91 59.97zm-128.84-55.03c-7.03-12.14-9.56-26.37-7.15-40.18.47.28 1.3.79 1.89 1.13l63.72 36.8c3.23 1.89 7.23 1.89 10.47 0l77.79-44.92v31.1c.02.32-.13.63-.38.83l-64.41 37.19c-28.69 16.52-65.33 6.7-81.92-21.95zm-16.77-139.09c7-12.16 18.05-21.46 31.21-26.29 0 .55-.03 1.52-.03 2.2v73.61c-.02 3.74 1.98 7.21 5.23 9.06l77.79 44.91-26.93 15.55c-.27.18-.61.21-.91.08l-64.42-37.22c-28.63-16.58-38.45-53.21-21.95-81.89zm221.26 51.49-77.79-44.92 26.93-15.54c.27-.18.61-.21.91-.08l64.42 37.19c28.68 16.57 38.51 53.26 21.94 81.94-7.01 12.14-18.05 21.44-31.2 26.28v-75.81c.03-3.74-1.96-7.2-5.2-9.06zm26.8-40.34c-.47-.29-1.3-.79-1.89-1.13l-63.72-36.8c-3.23-1.89-7.23-1.89-10.47 0l-77.79 44.92v-31.1c-.02-.32.13-.63.38-.83l64.41-37.16c28.69-16.55 65.37-6.7 81.91 22 6.99 12.12 9.52 26.31 7.15 40.1zm-168.51 55.43-26.94-15.55c-.29-.14-.48-.42-.52-.74v-74.39c.02-33.12 26.89-59.96 60.01-59.94 14.01 0 27.57 4.92 38.34 13.88-.49.26-1.33.73-1.89 1.07l-63.72 36.8c-3.26 1.85-5.26 5.31-5.24 9.06l-.04 89.79zm14.63-31.54 34.65-20.01 34.65 20v40.01l-34.65 20-34.65-20z"/></svg></template>
+    <template id="icon-claude"><svg viewBox="0 0 25 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M4.75923 15.9601L9.47889 13.3119L9.55826 13.0819L9.47889 12.954H9.2489L8.46013 12.9054L5.76341 12.8325L3.42463 12.7353L1.15874 12.6138L0.588624 12.4924L0.0541382 11.7878L0.109207 11.4364L0.588624 11.1141L1.27536 11.174L2.79297 11.2776L5.0702 11.4347L6.72224 11.5319L9.16954 11.7862H9.55826L9.61332 11.6291L9.48051 11.5319L9.37686 11.4347L7.02026 9.83776L4.46931 8.15009L3.1331 7.1783L2.41073 6.68592L2.04631 6.22432L1.8892 5.2169L2.54516 4.49453L3.42625 4.55446L3.65138 4.61439L4.54381 5.30112L6.45014 6.77662L8.93955 8.61007L9.30397 8.91294L9.44974 8.80929L9.46756 8.7364L9.30397 8.46268L7.94994 6.01539L6.50521 3.52598L5.86221 2.49426L5.69215 1.87556C5.63222 1.62127 5.58849 1.40748 5.58849 1.14671L6.33515 0.132813L6.74816 0L7.74425 0.132813L8.16374 0.497234L8.78244 1.91281L9.78501 4.14145L11.3399 7.17182L11.795 8.07072L12.0379 8.90323L12.1286 9.15751H12.2857V9.01175L12.4137 7.30463L12.6502 5.2088L12.8802 2.51208L12.9595 1.75246L13.3353 0.842219L14.0819 0.349845L14.665 0.628426L15.1444 1.31516L15.078 1.75894L14.793 3.61182L14.2342 6.51424L13.8698 8.45782H14.0819L14.3249 8.21487L15.308 6.90944L16.9601 4.84438L17.6889 4.02484L18.5392 3.11945L19.085 2.68862H20.1168L20.8764 3.81752L20.5363 4.98367L19.4738 6.33122L18.5927 7.47308L17.3293 9.17371L16.5406 10.5342L16.6135 10.6427L16.8013 10.6249L19.6552 10.0175L21.1971 9.73897L23.037 9.42313L23.8695 9.81185L23.9602 10.207L23.633 11.0153L21.6652 11.5011L19.3571 11.9628L15.9202 12.7758L15.8781 12.8066L15.9267 12.8665L17.4751 13.0123L18.1376 13.0479H19.7588L22.7779 13.273L23.5666 13.7946L24.0396 14.4327L23.9602 14.9186L22.7455 15.5373L21.1064 15.1486L17.2808 14.2384L15.9688 13.9112H15.7874V14.0197L16.8807 15.0887L18.8842 16.8978L21.3931 19.2301L21.521 19.8067L21.1987 20.2618L20.8586 20.2133L18.6542 18.5547L17.8039 17.8081L15.8781 16.1868H15.7502V16.3569L16.194 17.0063L18.5376 20.5291L18.6591 21.6094L18.489 21.9609L17.8816 22.173L17.2144 22.0516L15.8425 20.1258L14.4269 17.9571L13.2851 16.0135L13.1458 16.0929L12.472 23.3505L12.1562 23.7214L11.4273 24L10.82 23.5384L10.4977 22.7917L10.82 21.3162L11.2087 19.3905L11.5245 17.8599L11.8096 15.9584L11.9796 15.3268L11.9683 15.2847L11.829 15.3025L10.3956 17.2703L8.21556 20.2165L6.49063 22.0629L6.07762 22.2265L5.36174 21.8556L5.42814 21.1931L5.8282 20.6036L8.21556 17.5667L9.65544 15.6847L10.5851 14.5979L10.5786 14.4408H10.5236L4.18263 18.558L3.05373 18.7037L2.56784 18.2486L2.62776 17.502L2.85776 17.259L4.76409 15.9471L4.75761 15.9536L4.75923 15.9601Z"/></svg></template>
+    <template id="icon-localhost"><svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"> <path fill-rule="evenodd" d="M5 5a2 2 0 0 0-2 2v3a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7a2 2 0 0 0-2-2H5Zm9 2a1 1 0 1 0 0 2h.01a1 1 0 1 0 0-2H14Zm3 0a1 1 0 1 0 0 2h.01a1 1 0 1 0 0-2H17ZM3 17v-3a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Zm11-2a1 1 0 1 0 0 2h.01a1 1 0 1 0 0-2H14Zm3 0a1 1 0 1 0 0 2h.01a1 1 0 1 0 0-2H17Z" clip-rule="evenodd"/></svg></template>
+    <template id="icon-link"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.213 9.787a3.391 3.391 0 0 0-4.795 0l-3.425 3.426a3.39 3.39 0 0 0 4.795 4.794l.321-.304m-.321-4.49a3.39 3.39 0 0 0 4.795 0l3.424-3.426a3.39 3.39 0 0 0-4.794-4.795l-1.028.961"/></svg></template>
 
 
     <main id="app">
@@ -339,16 +447,23 @@
             </div>
         </button>
 
+
         <div id="engine">
             <!-- TODO -->
             <form id="search-bar">
                 <div id="search-icon-container">
-                    <svg id="search-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <path stroke="currentColor" stroke-linecap="round" stroke-width="2.4" d="m21 21-3.5-3.5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/>
-                    </svg>
+                    <div id="search-icon-default" class="search-icon">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-width="2.4" d="m21 21-3.5-3.5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/>
+                        </svg>
+                    </div>
+
+                    <div id="search-icon-active" class="search-icon fade-out-down">
+                        <svg>Placeholder</svg>
+                    </div>
                 </div>
 
-                <input type="text" id="search-input" name="search-input" placeholder="Search" autofocus autocomplete="off">
+                <input type="text" id="search-input" placeholder="Search" autofocus autocomplete="off" autocorrect="off">
 
                 <button type="submit" id="search-submit-btn">
                     <svg id="search-submit-icon" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
