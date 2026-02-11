@@ -50,7 +50,7 @@
         /* CLock */
         #time {
             position: absolute;
-            top: calc(50% - 54px / 2 - 144px);
+            top: calc(50% - 54px / 2 - 144px); /* relative to search box height then offset */
             left: 50%;
             transform: translate(-50%, -50%);
             color: #E2E8F0;
@@ -64,7 +64,7 @@
         /* Weather Display */
         #widget-list {
             position: absolute;
-            top: calc(50% - 54px / 2 - 60px);
+            top: calc(50% - 54px / 2 - 60px); /* relative to search box height then offset */
             left: 50%;
             transform: translate(-50%, -50%);
             display: flex;
@@ -101,17 +101,16 @@
         #engine {
             width: 100%;
             height: 54px;
-            position: relative;
         }
 
         #search-bar {
             display: flex;
             flex-direction: row;
             align-items: center;
-            border-radius: 16px;
             color: #E2E8F0;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
             background-color: rgba(255, 255, 255, 0.1);
-            width: 100%;
             height: 100%;
             overflow: hidden;
             backdrop-filter: blur(15px);
@@ -139,15 +138,16 @@
         }
         .fade-out-down {
             opacity: 0;
-            transform: translate(-50%, calc(-50% + 28px));
+            transform: translate(-50%, calc(-50% + 28px)); /* move down by 1 icon height */
         }
         .fade-out-up {
             opacity: 0;
-            transform: translate(-50%, calc(-50% - 28px));
+            transform: translate(-50%, calc(-50% - 28px)); /* move up by 1 icon height */
         }
 
         #search-input {
             color: inherit;
+            min-width: 0;
             font-size: 24px;
             flex-grow: 1;
             padding: 0 4px;
@@ -174,6 +174,36 @@
         #search-submit-icon {
             width: 26px;
             height: 26px;
+        }
+
+        #suggestion-box {
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px); 
+            padding: calc(13px - 1px - 6px) calc(54px - 1px - 10px); /* minus 1px for border + additional to align bg and content */
+            margin-top: 12px;
+        }
+        .suggestion {
+            color: #E2E8F0;
+            border-radius: 16px;
+            text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 24px;
+            padding: 6px calc(4px + 10px);
+            cursor: default;
+            user-select: none;
+            transition: all 0.15s ease;
+        }
+        .suggestion:hover, .suggestion:focus {
+            background-color: rgba(255, 255, 255, 0.15);
         }
     </style>
 
@@ -211,14 +241,17 @@
                     const longitude = localStorage.getItem("longitude");
 
                     const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation_probability,weather_code,is_day&timezone=auto&forecast_days=1`);
-                    if (!response.ok) throw new Error("Network error. Try again later.");
+                    if (!response.ok) throw new Error('Failed to retrieve weather data.');
 
                     const weatherData = await response.json();
                     localStorage.setItem("forecastUntil", weatherData.hourly.time.at(-1));
                     localStorage.setItem("forecastData", JSON.stringify(weatherData));
                 } 
-                catch (error) {
-                    alert(`Error fetching weather data: ${error.message}`);
+                catch (err) {
+                    const message = err instanceof TypeError ? "Network error. Try again later." : err.message;
+                    alert(message);
+
+                    console.error(err);
                 }
             }
 
@@ -312,9 +345,12 @@
             initWeather();
 
 
-            // Search
-            const googleQueryUrl = (input) => `https://www.google.com/search?q=${encodeURIComponent(input.trim())}`;
+            // Search / Suggestions / Pins
+            const searchBar = document.getElementById('search-bar');
+            const inputField = document.getElementById('search-input');
+            const suggestionBox = document.getElementById('suggestion-box');
 
+            const googleQueryUrl = (input) => `https://www.google.com/search?q=${encodeURIComponent(input.trim())}`;
             const commands = [
                 {
                     id: 'youtube',
@@ -363,26 +399,103 @@
                 }
             ]
             
-            const inputField = document.getElementById('search-input');
+            const clearSuggestions = () => {
+                suggestionBox.innerHTML = "";
+                suggestionBox.style.display = "none";
+            };
+
+            let controller;
+            const populateSuggestions = async (input) => {
+                if (controller) controller.abort();
+                const currentController = (controller = new AbortController());
+
+                clearSuggestions();
+                if (input.trim() === '') return;
+
+                try {
+                    const response = await fetch(`https://search-hint.lambdadelta.workers.dev/?q=${encodeURIComponent(input.trim())}`, { signal: currentController.signal });
+                    const data = await response.json();
+                    if (currentController.signal.aborted) return;
+                    
+                    // api returns an object with key 'error' containing error message if something went wrong
+                    if (!response.ok || data?.error) {
+                        throw new Error(data?.error);
+                    }
+
+                    // api returns {query: string, suggestions: string[]} if successful
+                    const suggestions = data.suggestions;
+                    if (suggestions.length === 0) return;
+                            
+                    // I'm limiting only rendering maximum 7 suggestions here
+                    for (let i = 0; i < Math.min(suggestions.length, 7); i++) {
+                        const clone = document.getElementById('suggestion-item').content.cloneNode(true);
+                        const link = clone.querySelector('a');
+
+                        link.textContent = suggestions[i];
+                        link.href = googleQueryUrl(suggestions[i]);
+                        link.tabIndex = 0;
+
+                        suggestionBox.appendChild(clone);
+                    }
+
+                    suggestionBox.style.display = 'flex';
+                }
+                catch (err) {
+                    if (err.name === 'AbortError') return;
+                    console.error(err);
+                }
+            };
+
+            inputField.addEventListener('keydown', (event) => {
+                if (suggestionBox.childElementCount === 0) return;
+                
+                if (event.code === 'ArrowDown') {
+                    event.preventDefault();
+                    suggestionBox.firstElementChild.focus();
+                }
+            });
+            suggestionBox.addEventListener('keydown', (event) => {
+                if (suggestionBox.childElementCount === 0) return;
+
+                const first = suggestionBox.firstElementChild;
+                const last = suggestionBox.lastElementChild;
+                const current = document.activeElement;
+
+                if (event.code === "ArrowUp") {
+                    event.preventDefault();
+                    if (current === first) inputField.focus();
+                    else current.previousElementSibling.focus();    
+                }
+                if (event.code === "ArrowDown") {
+                    event.preventDefault();
+                    if (current === last) inputField.focus();
+                    else current.nextElementSibling.focus();
+                }
+            });
+            
+            let suggestionDebounceTimer;
             inputField.addEventListener('input', () => {
                 const defaultSearchIcon = document.getElementById('search-icon-default');
                 const activeSearchIcon = document.getElementById('search-icon-active');
 
                 const chosenCommand = commands.find(c => c.match(inputField.value));
                 if (chosenCommand) {
+                    clearSuggestions()
+
                     const clone = document.getElementById(`icon-${chosenCommand.id}`).content.cloneNode(true);
                     activeSearchIcon.firstElementChild.replaceWith(clone);
-
                     defaultSearchIcon.classList.add('fade-out-up');
                     activeSearchIcon.classList.remove('fade-out-down');
                 }
                 else {
+                    clearTimeout(suggestionDebounceTimer);
+                    suggestionDebounceTimer =  setTimeout(() => populateSuggestions(inputField.value), 250);
+
                     defaultSearchIcon.classList.remove('fade-out-up');
                     activeSearchIcon.classList.add('fade-out-down');
                 }
             });
 
-            const searchBar = document.getElementById('search-bar');
             searchBar.addEventListener('submit', (e) => {
                 e.preventDefault();
 
@@ -414,6 +527,9 @@
     <template id="icon-claude"><svg viewBox="0 0 25 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M4.75923 15.9601L9.47889 13.3119L9.55826 13.0819L9.47889 12.954H9.2489L8.46013 12.9054L5.76341 12.8325L3.42463 12.7353L1.15874 12.6138L0.588624 12.4924L0.0541382 11.7878L0.109207 11.4364L0.588624 11.1141L1.27536 11.174L2.79297 11.2776L5.0702 11.4347L6.72224 11.5319L9.16954 11.7862H9.55826L9.61332 11.6291L9.48051 11.5319L9.37686 11.4347L7.02026 9.83776L4.46931 8.15009L3.1331 7.1783L2.41073 6.68592L2.04631 6.22432L1.8892 5.2169L2.54516 4.49453L3.42625 4.55446L3.65138 4.61439L4.54381 5.30112L6.45014 6.77662L8.93955 8.61007L9.30397 8.91294L9.44974 8.80929L9.46756 8.7364L9.30397 8.46268L7.94994 6.01539L6.50521 3.52598L5.86221 2.49426L5.69215 1.87556C5.63222 1.62127 5.58849 1.40748 5.58849 1.14671L6.33515 0.132813L6.74816 0L7.74425 0.132813L8.16374 0.497234L8.78244 1.91281L9.78501 4.14145L11.3399 7.17182L11.795 8.07072L12.0379 8.90323L12.1286 9.15751H12.2857V9.01175L12.4137 7.30463L12.6502 5.2088L12.8802 2.51208L12.9595 1.75246L13.3353 0.842219L14.0819 0.349845L14.665 0.628426L15.1444 1.31516L15.078 1.75894L14.793 3.61182L14.2342 6.51424L13.8698 8.45782H14.0819L14.3249 8.21487L15.308 6.90944L16.9601 4.84438L17.6889 4.02484L18.5392 3.11945L19.085 2.68862H20.1168L20.8764 3.81752L20.5363 4.98367L19.4738 6.33122L18.5927 7.47308L17.3293 9.17371L16.5406 10.5342L16.6135 10.6427L16.8013 10.6249L19.6552 10.0175L21.1971 9.73897L23.037 9.42313L23.8695 9.81185L23.9602 10.207L23.633 11.0153L21.6652 11.5011L19.3571 11.9628L15.9202 12.7758L15.8781 12.8066L15.9267 12.8665L17.4751 13.0123L18.1376 13.0479H19.7588L22.7779 13.273L23.5666 13.7946L24.0396 14.4327L23.9602 14.9186L22.7455 15.5373L21.1064 15.1486L17.2808 14.2384L15.9688 13.9112H15.7874V14.0197L16.8807 15.0887L18.8842 16.8978L21.3931 19.2301L21.521 19.8067L21.1987 20.2618L20.8586 20.2133L18.6542 18.5547L17.8039 17.8081L15.8781 16.1868H15.7502V16.3569L16.194 17.0063L18.5376 20.5291L18.6591 21.6094L18.489 21.9609L17.8816 22.173L17.2144 22.0516L15.8425 20.1258L14.4269 17.9571L13.2851 16.0135L13.1458 16.0929L12.472 23.3505L12.1562 23.7214L11.4273 24L10.82 23.5384L10.4977 22.7917L10.82 21.3162L11.2087 19.3905L11.5245 17.8599L11.8096 15.9584L11.9796 15.3268L11.9683 15.2847L11.829 15.3025L10.3956 17.2703L8.21556 20.2165L6.49063 22.0629L6.07762 22.2265L5.36174 21.8556L5.42814 21.1931L5.8282 20.6036L8.21556 17.5667L9.65544 15.6847L10.5851 14.5979L10.5786 14.4408H10.5236L4.18263 18.558L3.05373 18.7037L2.56784 18.2486L2.62776 17.502L2.85776 17.259L4.76409 15.9471L4.75761 15.9536L4.75923 15.9601Z"/></svg></template>
     <template id="icon-localhost"><svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"> <path fill-rule="evenodd" d="M5 5a2 2 0 0 0-2 2v3a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7a2 2 0 0 0-2-2H5Zm9 2a1 1 0 1 0 0 2h.01a1 1 0 1 0 0-2H14Zm3 0a1 1 0 1 0 0 2h.01a1 1 0 1 0 0-2H17ZM3 17v-3a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Zm11-2a1 1 0 1 0 0 2h.01a1 1 0 1 0 0-2H14Zm3 0a1 1 0 1 0 0 2h.01a1 1 0 1 0 0-2H17Z" clip-rule="evenodd"/></svg></template>
     <template id="icon-link"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.213 9.787a3.391 3.391 0 0 0-4.795 0l-3.425 3.426a3.39 3.39 0 0 0 4.795 4.794l.321-.304m-.321-4.49a3.39 3.39 0 0 0 4.795 0l3.424-3.426a3.39 3.39 0 0 0-4.794-4.795l-1.028.961"/></svg></template>
+
+    <!-- Suggestion item template -->
+    <template id="suggestion-item"><a class="suggestion"></a></template>
 
 
     <main id="app">
@@ -472,13 +588,9 @@
                 </button>
             </form>
             
-            <!-- TODO -->
-            <section id="suggestion">
-            </section>
-
-            <!-- TODO -->
-            <section id="pin">
-            </section>
+            <section id="suggestion-box" style="display: none;"></section>
+            
+            <section id="pin"></section>
         </div>
     </main>
 </body>

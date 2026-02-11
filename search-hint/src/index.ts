@@ -13,7 +13,7 @@ export default {
 		const url = new URL(request.url);
 		const method: string = request.method;
 		if (url.pathname !== '/') {
-			return jsonResponse({ error: 'Not Found'}, 404);
+			return jsonResponse({ error: 'Not Found' }, 404);
 		}
 		if (method !== 'GET') {
 			return jsonResponse({ error: 'Method Not Allowed' }, 405);
@@ -29,7 +29,7 @@ export default {
 				`https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(query)}`
 			);
 			if (!response.ok) {
-				return jsonResponse({ error: "Network error. Please try again." }, 500);
+				return jsonResponse({ error: "Failed to fetch suggestions" }, 500);
 			}
 
 			// google's response actually returns a array with 4 elements, but only the first 2 is necessary.
@@ -40,14 +40,14 @@ export default {
 				!Array.isArray(raw[1]) || 
 				!raw[1].every(item => typeof item === "string")
 			) {
-				return jsonResponse({ error: "Invalid data from Google. "}, 500);
+				return jsonResponse({ error: "Invalid data from Google" }, 500);
 			}
 
 			const data = raw as [string, string[]];
 			return jsonResponse({ query: data[0], suggestions: data[1] }, 200);
 		}
 		catch (err) {
-			return jsonResponse({ error: "Failed to fetch suggestions" }, 500);
+			return jsonResponse({ error: "Something went wrong" }, 500);
 		}
 	},
 };	
