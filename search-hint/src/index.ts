@@ -26,7 +26,7 @@ export default {
 
 		try {
 			const response: Response = await fetch(
-				`https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(query)}`
+				`https://suggestqueries.google.com/complete/search?client=firefox&hl=en&q=${encodeURIComponent(query)}`
 			);
 			if (!response.ok) {
 				return jsonResponse({ error: "Failed to fetch suggestions" }, 500);
