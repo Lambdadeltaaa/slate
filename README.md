@@ -37,7 +37,7 @@ claude rewrite my codebase in TS // starts new conversation with Claude with giv
 ### Search Suggestion
 The API endpoint is basically just a reverse proxy for google search.  
 By default it is using `https://search-hint.lambdadelta.workers.dev/` hosted on Cloudflare Workers.  
-Feel free to self deploy it, see `/search-hint` for source code and build instructions.
+Feel free to self deploy it, see [`search-hint/BUILD.md`](search-hint/BUILD.md) for source code and build instructions.
 
 
 ## How to Customise
