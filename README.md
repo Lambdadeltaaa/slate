@@ -48,12 +48,12 @@ Replace `background.jpg` with your own image (keep the same filename)
 1. Open index.html
 2. Inside `<section id="pin">`, paste:
 ```
-    <a href="https://example.com" class="pin-item">
-        <!-- Replace SVG with any icon you want -->
-        <svg>
-            <!-- your icon -->
-        </svg>
-    </a>
+<a href="https://example.com" class="pin-item">
+    <!-- Replace SVG with any icon you want -->
+    <svg>
+        <!-- your icon -->
+    </svg>
+</a>
 ```
 
 ### Others
