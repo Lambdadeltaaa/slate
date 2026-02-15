@@ -576,6 +576,10 @@
             inputField.addEventListener('keydown', (event) => {
                 if (suggestionBox.childElementCount === 0) return;
                 
+                if (event.code === 'ArrowUp') {
+                    event.preventDefault();
+                    suggestionBox.lastElementChild.focus();
+                }
                 if (event.code === 'ArrowDown') {
                     event.preventDefault();
                     suggestionBox.firstElementChild.focus();
