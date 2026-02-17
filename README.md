@@ -11,10 +11,12 @@ Feature list:
 
 
 ## Setup
-1. Download `index.html` and `background.jpg` (keep both in same folder)  
-2. Point your browser's home page configs to index.html  
-    - **Chromium**: Settings -> Appearance -> Show Home Button ✓ -> file://{where_u_store_the_html_page}
-    - **Safari**: Settings -> General -> Homepage -> Set to Current Page -> file://{where_u_store_the_html_page}
+1. Download the latest release from the [Releases](https://github.com/Lambdadeltaaa/slate/releases/latest) tab. (zip folder contains `index.html` & `background.jpg`)
+2. Extract the zip folder and keep both `index.html` and `background.jpg` in the same folder.
+3. Point your browser's home page configs to index.html 
+
+    - **Chromium**: Settings -> Appearance -> Show Home Button ✓ -> file://{path_to_index.html}
+    - **Safari**: Settings -> General -> Homepage -> Set to Current Page -> file://{path_to_index.html}
 
 
 ## Search Bar
@@ -38,7 +40,7 @@ claude rewrite my codebase in TS    // starts new conversation with claude using
 The API endpoint is basically just a reverse proxy for google search.  
 By default it is using `https://search-hint.lambdadelta.workers.dev/` hosted on Cloudflare Workers.  
 
-You can self deploy it yourself then edit the api URL in the code.  
+You can self deploy it yourself, then modify the fetch URL to your deployed API in `index.html`.  
 See [`search-hint/BUILD.md`](search-hint/BUILD.md) for source code and build instructions.
 
 
@@ -59,4 +61,4 @@ Replace `background.jpg` with your own image (keep the same filename)
 ```
 
 ### Others
-You can modify `index.html` however as you like.
+All code is contained within `index.html`. Fill free to modify it yourself.
