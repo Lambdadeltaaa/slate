@@ -419,6 +419,9 @@
                 localStorage.setItem("latitude", latitude.toString());
                 localStorage.setItem("longitude", longitude.toString());
 
+                localStorage.removeItem("forecastUntil");
+                localStorage.removeItem("forecastData");
+
                 initWeather();
             };
 
