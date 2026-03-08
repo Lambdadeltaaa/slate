@@ -15,8 +15,9 @@ Feature list:
 2. Extract the zip folder and keep both `index.html` and `background.jpg` in the same folder.
 3. Point your browser's home page configs to index.html 
 
-    - **Chromium**: Settings -> Appearance -> Show Home Button ✓ -> file://{path_to_index.html}
+    - **Chrome**: Settings -> Appearance -> Show Home Button ✓ -> file://{path_to_index.html}
     - **Safari**: Settings -> General -> Homepage -> Set to Current Page -> file://{path_to_index.html}
+    - **Firefox**: Settings -> Home -> Homepage and New Windows -> Custom URLs -> file://{path_to_index.html} 
 
 
 ## Search Bar
