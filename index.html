@@ -613,6 +613,7 @@
             inputField.addEventListener('input', (event) => {
                 clearTimeout(suggestionDebounceTimer);
                 clearSuggestions();
+                if (controller) controller.abort();
                 setPinnedItemsTabbable(true);
 
                 const defaultSearchIcon = document.getElementById('search-icon-default');
