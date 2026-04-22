@@ -458,7 +458,7 @@
                 },
                 {
                     id: 'claude',
-                    match: (input) => input.startsWith('claude '),
+                    match: (input) => input.startsWith('cl '),
                     link: (input) => `https://claude.ai/new?q=${encodeURIComponent(input.slice(7).trim())}`,
                     icon: function() {return document.getElementById(`icon-${this.id}`).content.cloneNode(true);},
                 },

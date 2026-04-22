@@ -26,14 +26,14 @@ To commands/shortcuts, type the command name + space, then your query.
 
 Example:
 ```
-claude rewrite my codebase in TS    // starts new conversation with claude using given query
+cl rewrite my codebase in TS    // starts new conversation with claude using given query
 ```
 
 ### Available Commands
 - `yt` - Youtube search
 - `gh` - Direct link to github (`github.com/{query}`)
 - `gpt` - Start new conversation with ChatGPT
-- `claude` - Start new conversation with Claude
+- `cl` - Start new conversation with Claude
 - `<number>` - Opens bookmarked pin (max 10)
 - `:<port_number>` - Opens `localhost:{port_number}` 
 
