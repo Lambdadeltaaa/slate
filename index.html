@@ -441,7 +441,11 @@
                 {
                     id: 'youtube',
                     match: (input) => input.startsWith('yt '),
-                    link: (input) => `https://www.youtube.com/results?search_query=${encodeURIComponent(input.slice(3).trim())}`,
+                    link: (input) => {
+                        const query = input.slice(3).trim();
+                        if (query === "") return 'https://www.youtube.com';
+                        else return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+                    },
                     icon: function() {return document.getElementById(`icon-${this.id}`).content.cloneNode(true);},
                 },
                 {
