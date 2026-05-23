@@ -15,7 +15,7 @@ cd slate/search-hint
 
 2. Install dependencies:
 ``` 
-npm install
+npm ci
 ```
 
 3. Deploy to Cloudflare Workers:
